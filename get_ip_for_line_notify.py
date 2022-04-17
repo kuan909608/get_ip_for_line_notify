@@ -20,12 +20,12 @@ def main():
 
 def get_ip():
     try:
-        r = requests.get(get_ip_url, headers=request_headers, timeout=1)
+        r = requests.get(get_ip_url, headers=request_headers, timeout=10)
         ip = r.text
 
         return ip
-    except TimeoutError:
-        return 'TimeoutError'
+    except requests.exceptions.ReadTimeout:
+        return 'requests：ReadTimeout'
     except Exception as e:
         print_and_write_log('get_ip()', e)
         return e
