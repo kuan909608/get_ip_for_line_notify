@@ -24,16 +24,15 @@ def get_ip():
         ip = r.text
 
         return ip
-    except requests.exceptions.ReadTimeout:
-        return 'requests：ReadTimeout'
+    except requests.exceptions.RequestException as e:
+        return 'RequestsError：' + str(e)
     except Exception as e:
-        print_and_write_log('get_ip()', e)
-        return e
+        return 'Error：' + str(e)
 
 
 def check_ip(ip):
     try:
-        if ip == 'TimeoutError':
+        if ip.find('Error') != -1:
             print_and_write_log('check_ip()', 'get_ip() ' + ip)
             return
 
@@ -50,10 +49,9 @@ def check_ip(ip):
 
             msg = '\n現在IP：' + ip
 
-            send_line_notify(notify_token1, msg)
-            send_line_notify(notify_token2, msg)
+            send_line_notify(notify_token, msg)
     except Exception as e:
-        print_and_write_log('check_ip()', e)
+        print_and_write_log('check_ip()', str(e))
 
 
 def send_line_notify(token, msg):
@@ -70,7 +68,7 @@ def send_line_notify(token, msg):
             time.sleep(10)
             send_line_notify(token, msg)
     except Exception as e:
-        print_and_write_log('send_line_notify()', e)
+        print_and_write_log('send_line_notify()', str(e))
 
 
 def print_and_write_log(function, msg):
@@ -89,7 +87,7 @@ def print_and_write_log(function, msg):
         file.close()
     except Exception as e:
         now_time = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
-        print('[' + now_time + ']　' + 'print_and_write_log() > ' + e)
+        print('[' + now_time + ']　' + 'print_and_write_log() > ' + str(e))
 
         if not os.path.isdir('Log'):
             os.makedirs('Log')
@@ -97,7 +95,7 @@ def print_and_write_log(function, msg):
             time.strftime("%Y-%m-%d", time.localtime()) + '.txt'
         file = open(log_path, mode='a', encoding='UTF-8')
         file.write('[' + now_time + ']　' +
-                   'print_and_write_log() > ' + e + '\n')
+                   'print_and_write_log() > ' + str(e) + '\n')
         file.close()
 
 
