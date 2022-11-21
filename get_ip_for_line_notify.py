@@ -9,9 +9,13 @@ line_notify_api_url = 'https://notify-api.line.me/api/notify'   # Line Notify的
 request_headers = {
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.82 Safari/537.36'}
 
-notify_token = ''  # Line Notify Token
+notify_token = ''
 
 ip_txt_path = 'IP.txt'
+
+noip_username = ''  # no-ip的帳號
+noip_password = ''  # no-ip的名稱
+noip_hostname = ''  # no-ip的DNS名稱
 
 
 def main():
@@ -20,7 +24,7 @@ def main():
 
 def get_ip():
     try:
-        r = requests.get(get_ip_url, headers=request_headers, timeout=10)
+        r = requests.get(get_ip_url, headers=request_headers, timeout=30)
         ip = r.text
 
         return ip
@@ -47,11 +51,27 @@ def check_ip(ip):
             file.write(ip)
             file.close()
 
-            msg = '\n現在IP：' + ip
+            msg = '\n'+noip_hostname+'\n現在IP：' + ip
 
-            send_line_notify(notify_token, msg)
+            update_ddns((noip_username, noip_password, noip_hostname, ip))
+            send_line_notify(notify_token1, msg)
+            send_line_notify(notify_token2, msg)
     except Exception as e:
         print_and_write_log('check_ip()', str(e))
+
+
+def update_ddns(config):
+    try:
+        r = requests.get(
+            "http://{}:{}@dynupdate.no-ip.com/nic/update?hostname={}&myip={}".format(*config))
+
+        if r.status_code != requests.codes.ok:
+            time.sleep(10)
+            update_ddns(config)
+
+        print_and_write_log('update_ddns()', noip_hostname + '已更新對應IP')
+    except Exception as e:
+        print_and_write_log('update_ddns()', str(e))
 
 
 def send_line_notify(token, msg):
@@ -107,4 +127,3 @@ if __name__ == '__main__':
     main()
     while True:
         schedule.run_pending()
-        time.sleep(1)
