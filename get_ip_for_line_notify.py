@@ -4,19 +4,19 @@ import time
 import requests
 import schedule
 
-get_ip_url = 'https://api.ipify.org/'  # IP查詢的爬蟲網址
-line_notify_api_url = 'https://notify-api.line.me/api/notify'   # Line Notify的爬蟲網址
-request_headers = {
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.82 Safari/537.36'}
+get_ip_url = 'https://api.ipify.org/'  # IP查詢的網址
+line_notify_api_url = 'https://notify-api.line.me/api/notify'   # Line Notify的網址
 
 notify_token = ''
 
 ip_txt_path = 'IP.txt'
 
-noip_username = ''  # no-ip的帳號
-noip_password = ''  # no-ip的名稱
-noip_hostname = ''  # no-ip的DNS名稱
-
+google_domains_username = ''  # google domains的帳號
+google_domains_password = ''  # google domains的名稱
+google_domains_hostname = ''  # google domains的DNS名稱
+request_headers = {
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+    }
 
 def main():
     check_ip(get_ip())
@@ -24,19 +24,26 @@ def main():
 
 def get_ip():
     try:
-        r = requests.get(get_ip_url, headers=request_headers, timeout=30)
-        ip = r.text
+        response = requests.get(get_ip_url, timeout=30)
+        if response.status_code == 200:
+            ip = response.text
+        else:
+            ip = None
 
         return ip
     except requests.exceptions.RequestException as e:
-        return 'RequestsError：' + str(e)
+        return 'Requests Error：' + str(e)
     except Exception as e:
         return 'Error：' + str(e)
 
 
 def check_ip(ip):
     try:
-        if ip.find('Error') != -1:
+        if ip is None:
+            print_and_write_log('check_ip()', 'get_ip() ip is None')
+            return
+
+        if 'Error' in ip:
             print_and_write_log('check_ip()', 'get_ip() ' + ip)
             return
 
@@ -45,15 +52,15 @@ def check_ip(ip):
         original_ip = file.read()
         file.close()
 
-        if ip != original_ip:
+        if ip != original_ip and ip != 'Bad Gateway':
             print_and_write_log('check_ip()', '浮動IP異動：' + ip)
             file = open(ip_txt_path, mode='w', encoding='UTF-8')
             file.write(ip)
             file.close()
 
-            msg = '\n'+noip_hostname+'\n現在IP：' + ip
+            msg = '\n'+google_domains_hostname+'\n現在IP：' + ip
 
-            update_ddns((noip_username, noip_password, noip_hostname, ip))
+            update_ddns((google_domains_username, google_domains_password, google_domains_hostname, ip))
             send_line_notify(notify_token1, msg)
             send_line_notify(notify_token2, msg)
     except Exception as e:
@@ -63,13 +70,13 @@ def check_ip(ip):
 def update_ddns(config):
     try:
         r = requests.get(
-            "http://{}:{}@dynupdate.no-ip.com/nic/update?hostname={}&myip={}".format(*config))
+            "https://{}:{}@domains.google.com/nic/update?hostname={}&myip={}".format(*config))
 
         if r.status_code != requests.codes.ok:
             time.sleep(10)
             update_ddns(config)
 
-        print_and_write_log('update_ddns()', noip_hostname + '已更新對應IP')
+        print_and_write_log('update_ddns()', google_domains_hostname + '已更新對應IP')
     except Exception as e:
         print_and_write_log('update_ddns()', str(e))
 
